@@ -22,6 +22,7 @@ import {
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { suggestGatewaySources } from "@/lib/ai/suggest-gateway";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
@@ -43,7 +44,11 @@ import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage, WaitingStatusData } from "@/lib/types";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import {
+  convertToUIMessages,
+  generateUUID,
+  getTextFromMessage,
+} from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -266,6 +271,11 @@ export async function POST(request: Request) {
           clearHealthCheckTimer();
         };
 
+        const question = message ? getTextFromMessage(message) : "";
+        const suggestionTask = question
+          ? suggestGatewaySources(question).catch(() => [])
+          : Promise.resolve([]);
+
         const result = streamText({
           activeTools:
             isReasoningModel && !supportsTools
@@ -334,6 +344,13 @@ export async function POST(request: Request) {
             stream: result.stream,
           })
         );
+
+        const picks = await suggestionTask;
+        dataStream.write({
+          data: picks,
+          transient: true,
+          type: "data-gateway-suggestions",
+        });
 
         if (titlePromise) {
           try {

@@ -1,11 +1,13 @@
-export const DEFAULT_CHAT_MODEL = "moonshotai/kimi-k2.5";
+export const FRONTIER_MODEL_ID = "xai/grok-4.7";
+
+export const DEFAULT_CHAT_MODEL = FRONTIER_MODEL_ID;
 
 export const titleModel = {
-  description: "Fast model for title generation",
-  gatewayOrder: ["fireworks", "bedrock"],
-  id: "moonshotai/kimi-k2.5",
-  name: "Kimi K2.5",
-  provider: "moonshotai",
+  description: "Frontier model for titles and gateway suggestions",
+  gatewayOrder: ["xai"],
+  id: FRONTIER_MODEL_ID,
+  name: "Grok 4.7",
+  provider: "xai",
 };
 
 export type ModelCapabilities = {
@@ -25,40 +27,10 @@ export type ChatModel = {
 
 export const chatModels: ChatModel[] = [
   {
-    description: "Fast and capable model with tool use",
-    gatewayOrder: ["bedrock", "deepinfra"],
-    id: "deepseek/deepseek-v3.2",
-    name: "DeepSeek V3.2",
-    provider: "deepseek",
-  },
-  {
-    description: "Moonshot AI flagship model",
-    gatewayOrder: ["fireworks", "bedrock"],
-    id: "moonshotai/kimi-k2.5",
-    name: "Kimi K2.5",
-    provider: "moonshotai",
-  },
-  {
-    description: "Compact reasoning model",
-    gatewayOrder: ["groq", "bedrock"],
-    id: "openai/gpt-oss-20b",
-    name: "GPT OSS 20B",
-    provider: "openai",
-    reasoningEffort: "low",
-  },
-  {
-    description: "Open-source 120B parameter model",
-    gatewayOrder: ["fireworks", "bedrock"],
-    id: "openai/gpt-oss-120b",
-    name: "GPT OSS 120B",
-    provider: "openai",
-    reasoningEffort: "low",
-  },
-  {
-    description: "Fast non-reasoning model with tool use",
+    description: "Frontier model for the answer and the gateway suggestions",
     gatewayOrder: ["xai"],
-    id: "xai/grok-4.1-fast-non-reasoning",
-    name: "Grok 4.1 Fast",
+    id: FRONTIER_MODEL_ID,
+    name: "Grok 4.7",
     provider: "xai",
   },
 ];

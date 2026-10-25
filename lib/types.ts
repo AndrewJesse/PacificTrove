@@ -27,6 +27,12 @@ export type ChatTools = {
   requestSuggestions: requestSuggestionsTool;
 };
 
+export type GatewaySuggestion = {
+  id: string;
+  title: string;
+  reason: string;
+};
+
 export type WaitingStatusData = {
   phase: "waiting" | "still-waiting" | "health" | "thinking";
   message: string;
@@ -48,6 +54,7 @@ export type CustomUIDataTypes = {
   finish: null;
   "chat-title": string;
   "waiting-status": WaitingStatusData;
+  "gateway-suggestions": GatewaySuggestion[];
 };
 
 export type ChatMessage = UIMessage<

@@ -1,6 +1,10 @@
 import { customProvider, gateway } from "ai";
 import { isTestEnvironment } from "../constants";
-import { titleModel } from "./models";
+import { FRONTIER_MODEL_ID } from "./models";
+
+function frontierModelId() {
+  return process.env.FRONTIER_MODEL || FRONTIER_MODEL_ID;
+}
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -22,12 +26,12 @@ export function getLanguageModel(modelId: string) {
     return myProvider.languageModel(modelId);
   }
 
-  return gateway.languageModel(modelId);
+  return gateway.languageModel(frontierModelId());
 }
 
 export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
-  return gateway.languageModel(titleModel.id);
+  return gateway.languageModel(frontierModelId());
 }

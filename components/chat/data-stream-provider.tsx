@@ -3,7 +3,11 @@
 import type { DataUIPart } from "ai";
 import type React from "react";
 import { createContext, useContext, useMemo, useState } from "react";
-import type { CustomUIDataTypes, WaitingStatusData } from "@/lib/types";
+import type {
+  CustomUIDataTypes,
+  GatewaySuggestion,
+  WaitingStatusData,
+} from "@/lib/types";
 
 type DataStreamContextValue = {
   dataStream: DataUIPart<CustomUIDataTypes>[];
@@ -14,6 +18,12 @@ type DataStreamContextValue = {
   setWaitingStatus: React.Dispatch<
     React.SetStateAction<WaitingStatusData | undefined>
   >;
+  gatewaySuggestions: GatewaySuggestion[];
+  setGatewaySuggestions: React.Dispatch<
+    React.SetStateAction<GatewaySuggestion[]>
+  >;
+  suggesting: boolean;
+  setSuggesting: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const DataStreamContext = createContext<DataStreamContextValue | null>(null);
@@ -27,10 +37,23 @@ export function DataStreamProvider({
     []
   );
   const [waitingStatus, setWaitingStatus] = useState<WaitingStatusData>();
+  const [gatewaySuggestions, setGatewaySuggestions] = useState<
+    GatewaySuggestion[]
+  >([]);
+  const [suggesting, setSuggesting] = useState(false);
 
   const value = useMemo(
-    () => ({ dataStream, setDataStream, setWaitingStatus, waitingStatus }),
-    [dataStream, waitingStatus]
+    () => ({
+      dataStream,
+      gatewaySuggestions,
+      setDataStream,
+      setGatewaySuggestions,
+      setSuggesting,
+      setWaitingStatus,
+      suggesting,
+      waitingStatus,
+    }),
+    [dataStream, gatewaySuggestions, suggesting, waitingStatus]
   );
 
   return (

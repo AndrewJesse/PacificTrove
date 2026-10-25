@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Outfit, Source_Serif_4 } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -7,29 +7,30 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  description: "Next.js chatbot template using the AI SDK.",
-  metadataBase: new URL("https://chat.vercel.ai"),
-  title: "Next.js Chatbot Template",
+  description: "A conversation with the public record.",
+  icons: { icon: "/brand/mark.svg" },
+  metadataBase: new URL("https://pacifictrove.com"),
+  title: "PacificTrove",
 };
 
 export const viewport = {
   maximumScale: 1,
 };
 
-const geist = Geist({
+const display = Source_Serif_4({
   display: "swap",
   subsets: ["latin"],
-  variable: "--font-geist",
+  variable: "--font-display",
 });
 
-const geistMono = Geist_Mono({
+const body = Outfit({
   display: "swap",
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-body",
 });
 
-const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
-const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
+const LIGHT_THEME_COLOR = "#F6F3EE";
+const DARK_THEME_COLOR = "#172026";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -55,7 +56,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${geist.variable} ${geistMono.variable}`}
+      className={`${display.variable} ${body.variable}`}
       lang="en"
       suppressHydrationWarning
     >
@@ -70,9 +71,9 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           disableTransitionOnChange
-          enableSystem
+          enableSystem={false}
         >
           <SessionProvider
             basePath={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}

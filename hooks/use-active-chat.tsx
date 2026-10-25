@@ -58,7 +58,12 @@ function extractChatId(pathname: string): string | null {
 
 export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { setDataStream, setWaitingStatus } = useDataStream();
+  const {
+    setDataStream,
+    setGatewaySuggestions,
+    setSuggesting,
+    setWaitingStatus,
+  } = useDataStream();
   const { mutate } = useSWRConfig();
 
   const chatIdFromUrl = extractChatId(pathname);
@@ -112,7 +117,16 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     messages: initialMessages,
     onData: (dataPart) => {
       if (dataPart.type === "data-waiting-status") {
+        if (dataPart.data.phase === "waiting") {
+          setGatewaySuggestions([]);
+          setSuggesting(true);
+        }
         setWaitingStatus(dataPart.data);
+        return;
+      }
+      if (dataPart.type === "data-gateway-suggestions") {
+        setGatewaySuggestions(dataPart.data);
+        setSuggesting(false);
         return;
       }
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));

@@ -48,37 +48,37 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.12 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.12 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.965 0 0);
-  --secondary-foreground: oklch(0.38 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.58 0 0);
-  --accent: oklch(0.965 0 0);
-  --accent-foreground: oklch(0.12 0 0);
-  --destructive: oklch(0.55 0.15 25);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.5 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.97 0 0);
-  --sidebar-foreground: oklch(0.38 0 0);
-  --sidebar-primary: oklch(0.12 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.12 0 0 / 0.06);
-  --sidebar-accent-foreground: oklch(0.12 0 0);
-  --sidebar-border: oklch(0.88 0 0);
-  --sidebar-ring: oklch(0.5 0 0);
+  --background: #f6f3ee;
+  --foreground: #172026;
+  --card: #ffffff;
+  --card-foreground: #172026;
+  --popover: #ffffff;
+  --popover-foreground: #172026;
+  --primary: #1c4f9c;
+  --primary-foreground: #f6f3ee;
+  --secondary: #e7e2d8;
+  --secondary-foreground: #172026;
+  --muted: #e7e2d8;
+  --muted-foreground: rgba(23, 32, 38, 0.62);
+  --accent: #1e6a46;
+  --accent-foreground: #f6f3ee;
+  --destructive: #8a2e2e;
+  --border: rgba(23, 32, 38, 0.14);
+  --input: rgba(23, 32, 38, 0.14);
+  --ring: #1c4f9c;
+  --chart-1: #1c4f9c;
+  --chart-2: #1e6a46;
+  --chart-3: #c6a15b;
+  --chart-4: #163e7c;
+  --chart-5: #8a4b2e;
+  --sidebar: #f6f3ee;
+  --sidebar-foreground: #172026;
+  --sidebar-primary: #1c4f9c;
+  --sidebar-primary-foreground: #f6f3ee;
+  --sidebar-accent: rgba(28, 79, 156, 0.08);
+  --sidebar-accent-foreground: #172026;
+  --sidebar-border: rgba(23, 32, 38, 0.14);
+  --sidebar-ring: #1c4f9c;
 
   --shadow-card: 0 1px 3px oklch(0 0 0 / 0.05), 0 1px 1px oklch(0 0 0 / 0.03);
   --shadow-float:
@@ -145,11 +145,17 @@
     @apply border-border ring-0;
   }
   body {
+    font-family: var(--font-body), "Avenir Next", "Segoe UI", sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), Georgia, serif;
   }
 }
 
