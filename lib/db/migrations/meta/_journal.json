@@ -8,6 +8,34 @@
       "when": 1710000000000,
       "tag": "0000_initial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761400000000,
+      "tag": "0001_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761410000000,
+      "tag": "0002_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1761420000000,
+      "tag": "0003_public_chats",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1761430000000,
+      "tag": "0004_email_length",
+      "breakpoints": true
     }
   ]
 }

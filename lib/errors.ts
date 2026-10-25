@@ -16,7 +16,8 @@ export type Surface =
   | "vote"
   | "document"
   | "suggestions"
-  | "activate_gateway";
+  | "activate_gateway"
+  | "billing";
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
@@ -26,6 +27,7 @@ export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   activate_gateway: "response",
   api: "response",
   auth: "response",
+  billing: "response",
   chat: "response",
   database: "log",
   document: "response",
@@ -98,6 +100,12 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
 
     case "rate_limit:chat":
       return "You've reached the message limit. Come back in 1 hour to continue chatting.";
+    case "forbidden:billing":
+      return "Those free questions are used. Sign in and subscribe to continue.";
+    case "rate_limit:billing":
+      return "This month's model allowance is used. It resets next month and does not carry over.";
+    case "unauthorized:billing":
+      return "Sign in before choosing a plan.";
     case "not_found:chat":
       return "The requested chat was not found. Please check the chat ID and try again.";
     case "forbidden:chat":

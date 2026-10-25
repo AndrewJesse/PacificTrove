@@ -27,7 +27,7 @@ export function AuthForm({
           defaultValue={defaultEmail}
           id="email"
           name="email"
-          placeholder="you@someo.ne"
+          placeholder="you@company.com"
           required
           type="email"
         />
@@ -45,6 +45,9 @@ export function AuthForm({
           required
           type="password"
         />
+        <p className="text-[12px] text-muted-foreground">
+          At least 6 characters.
+        </p>
       </div>
 
       {children}

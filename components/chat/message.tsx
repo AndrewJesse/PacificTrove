@@ -2,10 +2,14 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useCallback } from "react";
 import { TroveMark } from "@/components/brand/mark";
+import { useActiveChat } from "@/hooks/use-active-chat";
+import { pairModel } from "@/lib/ai/models";
+import { TROVE_NAME } from "@/lib/ai/pair";
 import type { Vote } from "@/lib/db/schema";
-import type { ChatMessage } from "@/lib/types";
-import { cn, sanitizeText } from "@/lib/utils";
-import { MessageContent, MessageResponse } from "../ai-elements/message";
+import type { ChatMessage, WaitingWorker } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { MessageContent } from "../ai-elements/message";
+import { ModelSelectorLogo } from "../ai-elements/model-selector";
 import { Shimmer } from "../ai-elements/shimmer";
 import {
   Tool,
@@ -20,21 +24,69 @@ import { DocumentPreview } from "./document-preview";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { ReplyBody } from "./reply-chart";
 import { Weather } from "./weather";
 
-function WaitingText() {
+function PairWork() {
   const { waitingStatus } = useDataStream();
-  const waitingText = waitingStatus?.message ?? "Waiting...";
+  const { answerModelId } = useActiveChat();
+  const answer = pairModel(answerModelId);
+  const workers: WaitingWorker[] =
+    waitingStatus?.workers && waitingStatus.workers.length > 0
+      ? waitingStatus.workers
+      : [
+          {
+            message: "Searching the web...",
+            modelId: answer.id,
+            modelName: answer.shortName ?? answer.name,
+            provider: answer.provider,
+            role: "answer",
+          },
+          {
+            message: "Searching the web...",
+            modelId: "trove",
+            modelName: TROVE_NAME,
+            provider: "trove",
+            role: "adversary",
+          },
+        ];
+
+  const answerWorker =
+    workers.find((worker) => worker.role === "answer") ?? workers[0];
+  const troveWorker =
+    workers.find((worker) => worker.role === "adversary") ?? workers[1];
 
   return (
-    <div className="flex min-h-[calc(13px*1.65)] min-w-0 items-center text-[13px] leading-[1.65]">
-      <Shimmer
-        as="span"
-        className="font-medium whitespace-normal break-words"
-        duration={1}
-      >
-        {waitingText}
-      </Shimmer>
+    <div className="flex w-full min-w-0 items-center justify-between gap-4">
+      {answerWorker ? (
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="size-2 shrink-0 animate-pulse rounded-full bg-foreground" />
+          <ModelSelectorLogo
+            className="size-6 shrink-0"
+            provider={answerWorker.provider}
+          />
+          <Shimmer
+            as="span"
+            className="truncate font-medium text-[13px] leading-[1.65]"
+            duration={1}
+          >
+            {`${answerWorker.modelName} · ${answerWorker.message}`}
+          </Shimmer>
+        </div>
+      ) : null}
+      {troveWorker ? (
+        <div className="flex min-w-0 items-center justify-end gap-2">
+          <Shimmer
+            as="span"
+            className="truncate text-right font-medium text-[13px] leading-[1.65]"
+            duration={1}
+          >
+            {`${TROVE_NAME} · ${troveWorker.message}`}
+          </Shimmer>
+          <TroveMark className="size-6 shrink-0" />
+          <span className="size-2 shrink-0 animate-pulse rounded-full bg-foreground" />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -183,7 +235,7 @@ const PurePreviewMessage = ({
           data-testid="message-content"
           key={key}
         >
-          <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
+          <ReplyBody text={part.text} />
         </MessageContent>
       );
     }
@@ -353,11 +405,12 @@ const PurePreviewMessage = ({
   );
 
   const content = isThinking ? (
-    <WaitingText />
+    <PairWork />
   ) : (
     <>
       {attachments}
       {parts}
+      {isAssistant && isLoading ? <PairWork /> : null}
       {actions}
     </>
   );
@@ -376,7 +429,7 @@ const PurePreviewMessage = ({
           isUser ? "flex flex-col items-end gap-2" : "flex items-start gap-3"
         )}
       >
-        {isAssistant && (
+        {isAssistant && !isThinking && (
           <div className="flex h-[calc(13px*1.65)] shrink-0 items-center">
             <TroveMark className="size-7" />
           </div>
@@ -399,12 +452,6 @@ export const ThinkingMessage = () => (
     data-role="assistant"
     data-testid="message-assistant-loading"
   >
-    <div className="flex items-start gap-3">
-      <div className="flex h-[calc(13px*1.65)] shrink-0 items-center">
-        <TroveMark className="size-7" />
-      </div>
-
-      <WaitingText />
-    </div>
+    <PairWork />
   </div>
 );

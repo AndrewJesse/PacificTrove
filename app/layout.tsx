@@ -7,10 +7,20 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  description: "A conversation with the public record.",
-  icons: { icon: "/brand/mark.svg" },
+  description:
+    "Trove already holds Oregon's numbers. A Claude subscription does not.",
+  icons: {
+    apple: "/apple-icon.png",
+    icon: [
+      { type: "image/svg+xml", url: "/icon.svg" },
+      { sizes: "32x32", url: "/favicon.ico" },
+    ],
+  },
   metadataBase: new URL("https://pacifictrove.com"),
-  title: "PacificTrove",
+  title: {
+    default: "PacificTrove",
+    template: "%s · PacificTrove",
+  },
 };
 
 export const viewport = {

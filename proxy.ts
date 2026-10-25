@@ -9,7 +9,11 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  if (pathname.startsWith("/api/auth")) {
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname === "/api/stripe/webhook" ||
+    pathname === "/api/owner/digest"
+  ) {
     return NextResponse.next();
   }
 
@@ -32,7 +36,10 @@ export async function proxy(request: NextRequest) {
   const isGuest = guestRegex.test(token?.email ?? "");
 
   if (token && !isGuest && ["/login", "/register"].includes(pathname)) {
-    return NextResponse.redirect(new URL(`${base}/`, request.url));
+    const next = request.nextUrl.searchParams.get("callbackUrl");
+    const destination =
+      next?.startsWith("/") && !next.startsWith("//") ? next : "/";
+    return NextResponse.redirect(new URL(`${base}${destination}`, request.url));
   }
 
   return NextResponse.next();
@@ -46,6 +53,6 @@ export const config = {
     "/login",
     "/register",
 
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|icon.png|apple-icon.png|brand/|ads/|sitemap.xml|robots.txt).*)",
   ],
 };

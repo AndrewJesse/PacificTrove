@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       isReadonly: false,
       messages: [],
       userId: null,
-      visibility: "private",
+      visibility: "public",
     });
   }
 

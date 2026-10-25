@@ -10,7 +10,9 @@ import {
   gte,
   inArray,
   lt,
+  notLike,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -19,6 +21,8 @@ import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
 import { generateUUID } from "../utils";
 import {
+  type BillingAccount,
+  billingAccount,
   type Chat,
   chat,
   type DBMessage,
@@ -28,6 +32,7 @@ import {
   stream,
   suggestion,
   type User,
+  usageCharge,
   user,
   vote,
 } from "./schema";
@@ -505,7 +510,7 @@ export async function updateChatVisibilityById({
   visibility,
 }: {
   chatId: string;
-  visibility: "private" | "public";
+  visibility: "private" | "public" | "incognito";
 }) {
   try {
     return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
@@ -585,6 +590,216 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
       .execute();
 
     return streamIds.map(({ id }) => id);
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const [row] = await db.select().from(user).where(eq(user.id, id)).limit(1);
+    return row ?? null;
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getBillingAccount(
+  userId: string
+): Promise<BillingAccount | null> {
+  try {
+    const [row] = await db
+      .select()
+      .from(billingAccount)
+      .where(eq(billingAccount.userId, userId))
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function saveBillingAccount({
+  currentPeriodEnd,
+  currentPeriodStart,
+  plan,
+  status,
+  stripeCustomerId,
+  stripeSubscriptionId,
+  userId,
+}: {
+  currentPeriodEnd: Date | null;
+  currentPeriodStart: Date | null;
+  plan: "forty" | "hundred" | "unlimited" | null;
+  status: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string | null;
+  userId: string;
+}) {
+  try {
+    await db
+      .insert(billingAccount)
+      .values({
+        currentPeriodEnd,
+        currentPeriodStart,
+        plan,
+        status,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        updatedAt: new Date(),
+        userId,
+      })
+      .onConflictDoUpdate({
+        set: {
+          currentPeriodEnd,
+          currentPeriodStart,
+          plan,
+          status,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          updatedAt: new Date(),
+        },
+        target: billingAccount.userId,
+      });
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function ownerPulse(since: Date) {
+  try {
+    const [signups] = await db
+      .select({ total: count() })
+      .from(user)
+      .where(and(notLike(user.email, "guest-%"), gte(user.createdAt, since)));
+    const [plans] = await db
+      .select({ total: count() })
+      .from(billingAccount)
+      .where(inArray(billingAccount.status, ["active", "trialing"]));
+    const [questions] = await db
+      .select({ total: count() })
+      .from(message)
+      .where(and(eq(message.role, "user"), gte(message.createdAt, since)));
+    return {
+      activePlans: Number(plans?.total ?? 0),
+      questions: Number(questions?.total ?? 0),
+      signups: Number(signups?.total ?? 0),
+    };
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function listOpenPlanNames() {
+  try {
+    const rows = await db
+      .select({ plan: billingAccount.plan })
+      .from(billingAccount)
+      .where(inArray(billingAccount.status, ["active", "trialing"]));
+    return rows.map((row) => row.plan);
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getBillingAccountByCustomer(stripeCustomerId: string) {
+  try {
+    const [row] = await db
+      .select()
+      .from(billingAccount)
+      .where(eq(billingAccount.stripeCustomerId, stripeCustomerId))
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function suspendBillingByCustomer(stripeCustomerId: string) {
+  try {
+    await db
+      .update(billingAccount)
+      .set({ status: "canceled", updatedAt: new Date() })
+      .where(eq(billingAccount.stripeCustomerId, stripeCustomerId));
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function recordUsageCharge({
+  costMicro,
+  modelId,
+  userId,
+}: {
+  costMicro: number;
+  modelId: string;
+  userId: string;
+}) {
+  if (costMicro <= 0) {
+    return;
+  }
+  try {
+    await db.insert(usageCharge).values({
+      costMicro,
+      createdAt: new Date(),
+      modelId,
+      userId,
+    });
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getSpendMicroSince({
+  since,
+  until,
+  userId,
+}: {
+  since: Date;
+  until?: Date;
+  userId: string;
+}) {
+  try {
+    const [stats] = await db
+      .select({
+        total: sql<number>`coalesce(sum(${usageCharge.costMicro}), 0)`,
+      })
+      .from(usageCharge)
+      .where(
+        and(
+          eq(usageCharge.userId, userId),
+          gte(usageCharge.createdAt, since),
+          until ? lt(usageCharge.createdAt, until) : undefined
+        )
+      );
+    return Number(stats?.total ?? 0);
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getMessageCountSince({
+  id,
+  since,
+}: {
+  id: string;
+  since?: Date;
+}) {
+  try {
+    const [stats] = await db
+      .select({ count: count(message.id) })
+      .from(message)
+      .innerJoin(chat, eq(message.chatId, chat.id))
+      .where(
+        and(
+          eq(chat.userId, id),
+          eq(message.role, "user"),
+          since ? gte(message.createdAt, since) : undefined
+        )
+      )
+      .execute();
+
+    return stats?.count ?? 0;
   } catch (error) {
     throw new ChatbotError("bad_request:database", { cause: error });
   }

@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -13,7 +14,7 @@ import {
 
 export const user = pgTable("User", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-  email: varchar("email", { length: 64 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
   emailVerified: boolean("emailVerified").notNull().default(false),
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   image: text("image"),
@@ -25,6 +26,37 @@ export const user = pgTable("User", {
 
 export type User = InferSelectModel<typeof user>;
 
+export const billingAccount = pgTable("BillingAccount", {
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  plan: varchar("plan", {
+    enum: ["forty", "hundred", "unlimited"],
+    length: 16,
+  }),
+  status: varchar("status", { length: 32 }).notNull().default("none"),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  userId: uuid("userId")
+    .primaryKey()
+    .notNull()
+    .references(() => user.id),
+});
+
+export type BillingAccount = InferSelectModel<typeof billingAccount>;
+
+export const usageCharge = pgTable("UsageCharge", {
+  costMicro: integer("costMicro").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  modelId: varchar("modelId", { length: 128 }).notNull(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+});
+
+export type UsageCharge = InferSelectModel<typeof usageCharge>;
+
 export const chat = pgTable("Chat", {
   createdAt: timestamp("createdAt").notNull(),
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -32,9 +64,11 @@ export const chat = pgTable("Chat", {
   userId: uuid("userId")
     .notNull()
     .references(() => user.id),
-  visibility: varchar("visibility", { enum: ["public", "private"] })
+  visibility: varchar("visibility", {
+    enum: ["public", "private", "incognito"],
+  })
     .notNull()
-    .default("private"),
+    .default("public"),
 });
 
 export type Chat = InferSelectModel<typeof chat>;

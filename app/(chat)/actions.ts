@@ -4,10 +4,11 @@ import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
 import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
-import { titleModel } from "@/lib/ai/models";
+import { AUTO_TARGET_ID } from "@/lib/ai/models";
 import { titlePrompt } from "@/lib/ai/prompts";
 import { getTitleModel } from "@/lib/ai/providers";
 import {
+  deleteChatById,
   deleteMessagesByChatIdAfterTimestamp,
   getChatById,
   getMessageById,
@@ -25,18 +26,20 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
-  const { text } = await generateText({
+  const result = await generateText({
     instructions: titlePrompt,
     model: getTitleModel(),
     prompt: getTextFromMessage(message),
-    providerOptions: {
-      gateway: { order: titleModel.gatewayOrder },
-    },
   });
-  return text
-    .replace(/^[#*"\s]+/, "")
-    .replace(/["]+$/, "")
-    .trim();
+  return {
+    modelId: AUTO_TARGET_ID,
+    providerMetadata: result.providerMetadata,
+    title: result.text
+      .replace(/^[#*"\s]+/, "")
+      .replace(/["]+$/, "")
+      .trim(),
+    usage: result.usage,
+  };
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
@@ -75,7 +78,12 @@ export async function updateChatVisibility({
 
   const chat = await getChatById({ id: chatId });
   if (!chat || chat.userId !== session.user.id) {
-    throw new Error("Unauthorized");
+    return;
+  }
+
+  if (visibility === "incognito") {
+    await deleteChatById({ id: chatId });
+    return;
   }
 
   await updateChatVisibilityById({ chatId, visibility });

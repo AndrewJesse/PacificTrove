@@ -6,16 +6,22 @@ import {
 } from "./gateway-suggestions";
 import { getLanguageModel } from "./providers";
 
-export async function suggestGatewaySources(
-  question: string
-): Promise<GatewayPick[]> {
+export async function suggestGatewaySources(question: string, modelId: string) {
   const trimmed = question.trim();
   if (trimmed.length < 2) {
-    return [];
+    return {
+      picks: [] as GatewayPick[],
+      providerMetadata: undefined,
+      usage: undefined,
+    };
   }
-  const { text } = await generateText({
-    model: getLanguageModel("chat-model"),
+  const result = await generateText({
+    model: getLanguageModel(modelId),
     prompt: gatewaySuggestionPrompt(trimmed),
   });
-  return parseGatewayPicks(text);
+  return {
+    picks: parseGatewayPicks(result.text),
+    providerMetadata: result.providerMetadata,
+    usage: result.usage,
+  };
 }

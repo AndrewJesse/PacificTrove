@@ -1,4 +1,13 @@
-export const FRONTIER_MODEL_ID = "spacexai/grok-4.7";
+export const ANSWER_MODEL_ID = "anthropic/claude-opus-5.5";
+
+export const ADVERSARY_MODEL_ID = "spacexai/grok-4.7";
+
+export const FRONTIER_MODEL_ID = ADVERSARY_MODEL_ID;
+
+export const AUTO_MODEL_ID = "auto";
+
+/** Cheap model behind Auto. It spends the monthly allowance more slowly. */
+export const AUTO_TARGET_ID = "openai/gpt-5-nano";
 
 export const DEFAULT_CHAT_MODEL = FRONTIER_MODEL_ID;
 
@@ -21,13 +30,117 @@ export type ChatModel = {
   name: string;
   provider: string;
   description: string;
+  discount?: string;
   gatewayOrder?: string[];
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
+  shortName?: string;
 };
+
+export const pairModels: ChatModel[] = [
+  {
+    description: "Picks a frontier model for this side.",
+    id: AUTO_MODEL_ID,
+    name: "Auto",
+    provider: "auto",
+    shortName: "Auto",
+  },
+  {
+    description: "",
+    gatewayOrder: ["anthropic"],
+    id: ANSWER_MODEL_ID,
+    name: "Claude Opus 5.5",
+    provider: "anthropic",
+    shortName: "Claude",
+  },
+  {
+    description: "",
+    gatewayOrder: ["openai"],
+    id: "openai/gpt-5.6-sol",
+    name: "GPT 5.6 Sol",
+    provider: "openai",
+    shortName: "GPT",
+  },
+  {
+    description: "",
+    gatewayOrder: ["google"],
+    id: "google/gemini-3.1-pro-preview",
+    name: "Gemini 3.1 Pro",
+    provider: "google",
+    shortName: "Gemini",
+  },
+  {
+    description: "",
+    gatewayOrder: ["xai"],
+    id: ADVERSARY_MODEL_ID,
+    name: "Grok 4.7",
+    provider: "xai",
+    shortName: "Grok",
+  },
+];
+
+export function pairModel(
+  modelId: string | undefined,
+  fallbackId = ANSWER_MODEL_ID
+) {
+  return (
+    pairModels.find((model) => model.id === modelId) ??
+    pairModels.find((model) => model.id === fallbackId) ??
+    pairModels[0]
+  );
+}
+
+export function resolvePairModel(
+  modelId: string | undefined,
+  seat: "answer" | "adversary"
+) {
+  const selected = pairModel(
+    modelId,
+    seat === "answer" ? ANSWER_MODEL_ID : ADVERSARY_MODEL_ID
+  );
+  if (selected.id !== AUTO_MODEL_ID) {
+    return selected;
+  }
+  return pairModel(seat === "answer" ? ANSWER_MODEL_ID : ADVERSARY_MODEL_ID);
+}
 
 export const chatModels: ChatModel[] = [
   {
-    description: "Frontier model for the answer and the gateway suggestions",
+    description: "A cheaper model. It uses less of the monthly allowance.",
+    discount: "Discount",
+    id: AUTO_MODEL_ID,
+    name: "Auto",
+    provider: "openai",
+  },
+  {
+    description: "A small, inexpensive model.",
+    discount: "Discount",
+    id: "deepseek/deepseek-v4-flash",
+    name: "DeepSeek V4 Flash",
+    provider: "deepseek",
+  },
+  {
+    description: "A fast, inexpensive Gemini model.",
+    discount: "Discount",
+    id: "google/gemini-2.5-flash-lite",
+    name: "Gemini 2.5 Flash Lite",
+    provider: "google",
+  },
+  {
+    description: "A smaller GPT model.",
+    discount: "Discount",
+    id: "openai/gpt-5-mini",
+    name: "GPT-5 mini",
+    provider: "openai",
+  },
+  {
+    description: "A smaller Claude model.",
+    discount: "Discount",
+    id: "anthropic/claude-haiku-4.5",
+    name: "Claude Haiku 4.5",
+    provider: "anthropic",
+  },
+  {
+    description: "Frontier model. It uses the allowance fastest.",
     gatewayOrder: ["xai"],
     id: FRONTIER_MODEL_ID,
     name: "Grok 4.7",
@@ -35,14 +148,25 @@ export const chatModels: ChatModel[] = [
   },
 ];
 
+export function resolveModelId(modelId: string) {
+  if (modelId === AUTO_MODEL_ID) {
+    return AUTO_TARGET_ID;
+  }
+  if (chatModels.some((model) => model.id === modelId)) {
+    return modelId;
+  }
+  return FRONTIER_MODEL_ID;
+}
+
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
   const results = await Promise.all(
     chatModels.map(async (model) => {
       try {
+        const lookupId = model.id === AUTO_MODEL_ID ? AUTO_TARGET_ID : model.id;
         const res = await fetch(
-          `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
+          `https://ai-gateway.vercel.sh/v1/models/${lookupId}/endpoints`,
           { next: { revalidate: 86_400 } }
         );
         if (!res.ok) {
@@ -174,13 +298,9 @@ export async function getModelAvailability(
 ): Promise<ModelAvailability> {
   const model = chatModels.find((item) => item.id === modelId);
 
-  if (!model) {
-    return "unknown";
-  }
-
   try {
     const res = await fetch(
-      `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
+      `https://ai-gateway.vercel.sh/v1/models/${model?.id ?? modelId}/endpoints`,
       { next: { revalidate: 60 } }
     );
     if (!res.ok) {

@@ -36,12 +36,17 @@ export function useChatVisibility({
     }
     const chat = history.chats.find((currentChat) => currentChat.id === chatId);
     if (!chat) {
-      return "private";
+      return localVisibility;
     }
     return chat.visibility;
   }, [history, chatId, localVisibility]);
 
   const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
+    if (updatedVisibilityType === "incognito") {
+      window.sessionStorage.setItem(`incognito:${chatId}`, "1");
+    } else {
+      window.sessionStorage.removeItem(`incognito:${chatId}`);
+    }
     setLocalVisibility(updatedVisibilityType);
     mutate(unstable_serialize(getChatHistoryPaginationKey));
 

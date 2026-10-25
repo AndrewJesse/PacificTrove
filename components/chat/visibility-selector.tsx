@@ -1,5 +1,6 @@
 "use client";
 
+import { EyeOffIcon } from "lucide-react";
 import {
   type Dispatch,
   type ReactNode,
@@ -24,7 +25,7 @@ import {
   LockIcon,
 } from "./icons";
 
-export type VisibilityType = "private" | "public";
+export type VisibilityType = "private" | "public" | "incognito";
 
 const visibilities: Array<{
   id: VisibilityType;
@@ -43,6 +44,12 @@ const visibilities: Array<{
     icon: <GlobeIcon />,
     id: "public",
     label: "Public",
+  },
+  {
+    description: "Not saved. It stays on this screen only.",
+    icon: <EyeOffIcon className="size-4" />,
+    id: "incognito",
+    label: "Incognito",
   },
 ];
 

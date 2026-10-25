@@ -26,12 +26,20 @@ const toolApprovalMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
 });
 
+const foldSourceSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  note: z.string().trim().max(400).optional(),
+});
+
 export const postRequestBodySchema = z.object({
+  adversaryModelId: z.string().optional(),
+  answerModelId: z.string().optional(),
   id: z.uuid(),
   message: userMessageSchema.optional(),
   messages: z.array(toolApprovalMessageSchema).optional(),
   selectedChatModel: z.string(),
-  selectedVisibilityType: z.enum(["public", "private"]),
+  selectedVisibilityType: z.enum(["public", "private", "incognito"]),
+  sources: z.array(foldSourceSchema).max(12).optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

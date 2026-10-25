@@ -3,12 +3,13 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -22,7 +23,12 @@ import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { toast } from "@/components/chat/toast";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { useAutoResume } from "@/hooks/use-auto-resume";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import {
+  ADVERSARY_MODEL_ID,
+  ANSWER_MODEL_ID,
+  DEFAULT_CHAT_MODEL,
+  pairModel,
+} from "@/lib/ai/models";
 import type { Vote } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
@@ -45,6 +51,10 @@ type ActiveChatContextValue = {
   votes: Vote[] | undefined;
   currentModelId: string;
   setCurrentModelId: (id: string) => void;
+  answerModelId: string;
+  adversaryModelId: string;
+  setAnswerModelId: (id: string) => void;
+  setAdversaryModelId: (id: string) => void;
   showCreditCardAlert: boolean;
   setShowCreditCardAlert: Dispatch<SetStateAction<boolean>>;
 };
@@ -58,11 +68,13 @@ function extractChatId(pathname: string): string | null {
 
 export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     setDataStream,
     setGatewaySuggestions,
     setSuggesting,
     setWaitingStatus,
+    sourcePicksRef,
   } = useDataStream();
   const { mutate } = useSWRConfig();
 
@@ -84,6 +96,51 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
 
+  const [answerModelId, setAnswerModelIdState] = useState(ANSWER_MODEL_ID);
+  const [adversaryModelId, setAdversaryModelIdState] =
+    useState(ADVERSARY_MODEL_ID);
+  const answerModelIdRef = useRef(answerModelId);
+  const adversaryModelIdRef = useRef(adversaryModelId);
+  answerModelIdRef.current = answerModelId;
+  adversaryModelIdRef.current = adversaryModelId;
+
+  useEffect(() => {
+    const storedAnswer = window.localStorage.getItem("pair-answer-model");
+    const storedAdversary = window.localStorage.getItem("pair-adversary-model");
+    if (storedAnswer) {
+      setAnswerModelIdState(pairModel(storedAnswer, ANSWER_MODEL_ID).id);
+    }
+    if (storedAdversary) {
+      setAdversaryModelIdState(
+        pairModel(storedAdversary, ADVERSARY_MODEL_ID).id
+      );
+    }
+  }, []);
+
+  const setAnswerModelId = useCallback((id: string) => {
+    const next = pairModel(id, ANSWER_MODEL_ID).id;
+    const other = adversaryModelIdRef.current;
+    if (next === other) {
+      const previous = answerModelIdRef.current;
+      setAdversaryModelIdState(previous);
+      window.localStorage.setItem("pair-adversary-model", previous);
+    }
+    setAnswerModelIdState(next);
+    window.localStorage.setItem("pair-answer-model", next);
+  }, []);
+
+  const setAdversaryModelId = useCallback((id: string) => {
+    const next = pairModel(id, ADVERSARY_MODEL_ID).id;
+    const other = answerModelIdRef.current;
+    if (next === other) {
+      const previous = adversaryModelIdRef.current;
+      setAnswerModelIdState(previous);
+      window.localStorage.setItem("pair-answer-model", previous);
+    }
+    setAdversaryModelIdState(next);
+    window.localStorage.setItem("pair-adversary-model", next);
+  }, []);
+
   const [input, setInput] = useState("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
 
@@ -98,9 +155,27 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const initialMessages: ChatMessage[] = isNewChat
     ? []
     : (chatData?.messages ?? []);
-  const visibility: VisibilityType = isNewChat
-    ? "private"
-    : (chatData?.visibility ?? "private");
+  const wantsIncognito = searchParams.get("incognito") === "1";
+  const storedIncognito =
+    typeof window !== "undefined" &&
+    window.sessionStorage.getItem(`incognito:${chatId}`) === "1";
+  const defaultVisibility: VisibilityType =
+    wantsIncognito || storedIncognito ? "incognito" : "public";
+  const { data: pickedVisibility } = useSWR<VisibilityType>(
+    `${chatId}-visibility`,
+    null,
+    { fallbackData: defaultVisibility }
+  );
+  const visibility: VisibilityType =
+    wantsIncognito || storedIncognito || pickedVisibility === "incognito"
+      ? "incognito"
+      : isNewChat
+        ? (pickedVisibility ?? "public")
+        : chatData?.visibility === "private"
+          ? "private"
+          : (pickedVisibility ?? chatData?.visibility ?? "public");
+  const visibilityRef = useRef(visibility);
+  visibilityRef.current = visibility;
 
   const {
     messages,
@@ -132,6 +207,10 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
     },
     onError: (error) => {
+      if (error instanceof ChatbotError && error.surface === "billing") {
+        window.location.assign("/subscribe");
+        return;
+      }
       if (error.message?.includes("AI Gateway requires a valid credit card")) {
         setShowCreditCardAlert(true);
       } else if (error instanceof ChatbotError) {
@@ -180,8 +259,13 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
             ...(isToolApprovalContinuation
               ? { messages: request.messages }
               : { message: lastMessage }),
-            selectedChatModel: currentModelIdRef.current,
-            selectedVisibilityType: visibility,
+            adversaryModelId: adversaryModelIdRef.current,
+            answerModelId: answerModelIdRef.current,
+            selectedChatModel: answerModelIdRef.current,
+            selectedVisibilityType: visibilityRef.current,
+            ...(sourcePicksRef.current.length > 0
+              ? { sources: sourcePicksRef.current }
+              : {}),
             ...request.body,
           },
         };
@@ -271,6 +355,8 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ActiveChatContextValue>(
     () => ({
       addToolApprovalResponse,
+      adversaryModelId,
+      answerModelId,
       chatId,
       currentModelId,
       input,
@@ -279,6 +365,8 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       messages,
       regenerate,
       sendMessage,
+      setAdversaryModelId,
+      setAnswerModelId,
       setCurrentModelId,
       setInput,
       setMessages,
@@ -304,7 +392,11 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       isNewChat,
       isLoading,
       votes,
+      adversaryModelId,
+      answerModelId,
       currentModelId,
+      setAdversaryModelId,
+      setAnswerModelId,
       showCreditCardAlert,
     ]
   );

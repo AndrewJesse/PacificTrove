@@ -33,11 +33,20 @@ export type GatewaySuggestion = {
   reason: string;
 };
 
+export type WaitingWorker = {
+  message: string;
+  modelId: string;
+  modelName: string;
+  provider: string;
+  role: "answer" | "adversary";
+};
+
 export type WaitingStatusData = {
   phase: "waiting" | "still-waiting" | "health" | "thinking";
   message: string;
   modelId: string;
   modelName: string;
+  workers?: WaitingWorker[];
 };
 
 export type CustomUIDataTypes = {
