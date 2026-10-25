@@ -70,6 +70,17 @@ function getStreamContext() {
   }
 }
 
+function chatErrorText(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("Free tier users do not have access")) {
+    return "Grok 4.7 needs paid AI Gateway credits before it can answer. Add credits, then ask again.";
+  }
+  if (message.includes("AI Gateway requires a valid credit card")) {
+    return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
+  }
+  return "Oops, an error occurred!";
+}
+
 export { getStreamContext };
 
 export async function POST(request: Request) {
@@ -273,7 +284,13 @@ export async function POST(request: Request) {
 
         const question = message ? getTextFromMessage(message) : "";
         const suggestionTask = question
-          ? suggestGatewaySources(question).catch(() => [])
+          ? suggestGatewaySources(question).catch((error) => {
+              console.error(
+                "gateway suggestion error",
+                error instanceof Error ? error.message : "unknown"
+              );
+              return [];
+            })
           : Promise.resolve([]);
 
         const result = streamText({
@@ -340,6 +357,13 @@ export async function POST(request: Request) {
 
         dataStream.merge(
           toUIMessageStream({
+            onError: (error) => {
+              console.error(
+                "chat model error",
+                error instanceof Error ? error.message : "unknown"
+              );
+              return chatErrorText(error);
+            },
             sendReasoning: isReasoningModel,
             stream: result.stream,
           })
@@ -406,15 +430,11 @@ export async function POST(request: Request) {
         }
       },
       onError: (error) => {
-        if (
-          error instanceof Error &&
-          error.message?.includes(
-            "AI Gateway requires a valid credit card on file to service requests"
-          )
-        ) {
-          return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
-        }
-        return "Oops, an error occurred!";
+        console.error(
+          "chat model error",
+          error instanceof Error ? error.message : "unknown"
+        );
+        return chatErrorText(error);
       },
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
     });
