@@ -1,4 +1,4 @@
-export const FRONTIER_MODEL_ID = "xai/grok-4.7";
+export const FRONTIER_MODEL_ID = "spacexai/grok-4.7";
 
 export const DEFAULT_CHAT_MODEL = FRONTIER_MODEL_ID;
 
