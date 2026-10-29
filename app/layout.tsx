@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Outfit, Source_Serif_4 } from "next/font/google";
@@ -92,6 +93,7 @@ export default function RootLayout({
             <TooltipProvider>{children}</TooltipProvider>
           </SessionProvider>
         </ThemeProvider>
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
